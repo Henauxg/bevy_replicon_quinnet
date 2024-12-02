@@ -42,6 +42,8 @@ Sources for the examples can be found in the [examples](examples) directory.
 | 0.13 | 0.8          | 0.2                   | 0.25          |
 | 0.13 | 0.8          | 0.1                   | 0.24          |
 
+*Before v0.7.0, this repository was inside the `bevy_quinnet` repository*
+
 ## License
 
 This crate is free and open source. All code in this repository is dual-licensed under either:
