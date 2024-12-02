@@ -91,14 +91,13 @@ impl SimpleBoxPlugin {
                         channels.get_server_configs(),
                     )
                     .unwrap();
-
-                commands.spawn(TextBundle::from_section(
-                    "Server",
-                    TextStyle {
-                        font_size: 30.0,
-                        color: Color::WHITE,
+                commands.spawn((
+                    Text("Server".into()),
+                    TextFont {
+                        font_size: 30.,
                         ..default()
                     },
+                    TextColor(Color::WHITE),
                 ));
                 commands.spawn(PlayerBundle::new(
                     ClientId::SERVER,
@@ -115,13 +114,13 @@ impl SimpleBoxPlugin {
                     )
                     .unwrap();
 
-                commands.spawn(TextBundle::from_section(
-                    "Client",
-                    TextStyle {
-                        font_size: 30.0,
-                        color: Color::WHITE,
+                commands.spawn((
+                    Text("Client".into()),
+                    TextFont {
+                        font_size: 30.,
                         ..default()
                     },
+                    TextColor(Color::WHITE),
                 ));
             }
         }
@@ -130,7 +129,7 @@ impl SimpleBoxPlugin {
     }
 
     fn spawn_camera(mut commands: Commands) {
-        commands.spawn(Camera2dBundle::default());
+        commands.spawn(Camera2d::default());
     }
 
     /// Logs server events and spawns a new player whenever a client connects.
@@ -159,8 +158,7 @@ impl SimpleBoxPlugin {
     fn draw_boxes(mut gizmos: Gizmos, players: Query<(&PlayerPosition, &PlayerColor)>) {
         for (position, color) in &players {
             gizmos.rect(
-                Vec3::new(position.x, position.y, 0.0),
-                Quat::IDENTITY,
+                Isometry3d::new(Vec3::new(position.x, position.y, 0.0), Quat::IDENTITY),
                 Vec2::ONE * 50.0,
                 color.0,
             );
@@ -201,7 +199,7 @@ impl SimpleBoxPlugin {
             info!("received event {event:?} from {client_id:?}");
             for (player, mut position) in &mut players {
                 if *client_id == player.0 {
-                    **position += event.0 * time.delta_seconds() * MOVE_SPEED;
+                    **position += event.0 * time.delta_secs() * MOVE_SPEED;
                 }
             }
         }
