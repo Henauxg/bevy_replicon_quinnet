@@ -16,6 +16,8 @@ use client::RepliconQuinnetClientPlugin;
 #[cfg(feature = "server")]
 use server::RepliconQuinnetServerPlugin;
 
+pub const BYTES_PER_SEC_PERIOD: f64 = 0.1;
+
 pub struct RepliconQuinnetPlugins;
 
 impl PluginGroup for RepliconQuinnetPlugins {

@@ -1,6 +1,7 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, Res, ResMut},
+    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut},
+    time::Time,
 };
 use bevy_quinnet::{
     client::{QuinnetClient, QuinnetClientPlugin},
@@ -11,6 +12,8 @@ use bevy_replicon::{
     core::ClientId,
     prelude::{RepliconClient, RepliconClientStatus},
 };
+
+use crate::BYTES_PER_SEC_PERIOD;
 
 pub struct RepliconQuinnetClientPlugin;
 
@@ -27,7 +30,8 @@ impl Plugin for RepliconQuinnetClientPlugin {
                     Self::set_connecting.run_if(bevy_quinnet::client::client_connecting),
                     Self::set_disconnected.run_if(bevy_quinnet::client::client_just_disconnected),
                     Self::set_connected.run_if(bevy_quinnet::client::client_just_connected),
-                    Self::receive_packets.run_if(bevy_quinnet::client::client_connected),
+                    (Self::receive_packets, Self::update_statistics)
+                        .run_if(bevy_quinnet::client::client_connected),
                 )
                     .chain()
                     .in_set(ClientSet::ReceivePackets),
@@ -59,6 +63,33 @@ impl RepliconQuinnetClientPlugin {
         client.set_status(RepliconClientStatus::Connected { client_id });
     }
 
+    fn update_statistics(
+        mut bps_timer: Local<f64>,
+        mut quinnet_client: ResMut<QuinnetClient>,
+        mut replicon_client: ResMut<RepliconClient>,
+        time: Res<Time>,
+    ) {
+        let Some(con) = quinnet_client.get_connection_mut() else {
+            return;
+        };
+        let Some(stats) = con.connection_stats() else {
+            return;
+        };
+        replicon_client.set_rtt(stats.path.rtt.as_secs_f64());
+        replicon_client.set_packet_loss(
+            100. * (stats.path.lost_packets as f64 / stats.path.sent_packets as f64),
+        );
+
+        *bps_timer += time.delta_secs_f64();
+        if *bps_timer >= BYTES_PER_SEC_PERIOD {
+            *bps_timer = 0.;
+            let received_bytes_count = con.clear_received_bytes_count() as f64;
+            let sent_bytes_count = con.clear_sent_bytes_count() as f64;
+            replicon_client.set_received_bps(received_bytes_count / BYTES_PER_SEC_PERIOD);
+            replicon_client.set_sent_bps(sent_bytes_count / BYTES_PER_SEC_PERIOD);
+        }
+    }
+
     fn receive_packets(
         mut quinnet_client: ResMut<QuinnetClient>,
         mut replicon_client: ResMut<RepliconClient>,
@@ -73,10 +104,10 @@ impl RepliconQuinnetClientPlugin {
     }
 
     fn send_packets(
-        quinnet_client: ResMut<QuinnetClient>,
+        mut quinnet_client: ResMut<QuinnetClient>,
         mut replicon_client: ResMut<RepliconClient>,
     ) {
-        let Some(connection) = quinnet_client.get_connection() else {
+        let Some(connection) = quinnet_client.get_connection_mut() else {
             return;
         };
         for (channel_id, message) in replicon_client.drain_sent() {
