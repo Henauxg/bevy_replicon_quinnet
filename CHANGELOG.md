@@ -1,10 +1,20 @@
 # Changelog
 
+## Version 0.7.0 (2024-12-02)
+
+- Update `bevy_quinnet` dependency from 0.11 to 0.13
+- Update `bevy_replicon` dependency from 0.28 to 0.29
+- Update `bevy` dependency from 0.14 to 0.15
+
+## Version 0.6.0 (2024-12-01)
+
+- Update `bevy_quinnet` dependency from 0.10 to 0.11
+
 ## Version 0.5.0 (2024-09-09)
 
 - Add `client` & `server` features.
 - Update `bevy_quinnet` dependency from 0.9 to 0.10
-- Update `bevy_replicon` dependency from 0.26 to 0.27
+- Update `bevy_replicon` dependency from 0.27 to 0.28
 
 ## Version 0.4.0 (2024-07-05)
 
