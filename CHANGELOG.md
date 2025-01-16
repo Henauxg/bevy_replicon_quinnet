@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.8.0 (2025-01-16)
+
+- Update `bevy_quinnet` dependency from 0.13 to 0.14
+
 ## Version 0.7.0 (2024-12-02)
 
 - Update `bevy_quinnet` dependency from 0.11 to 0.13
