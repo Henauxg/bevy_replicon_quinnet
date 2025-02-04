@@ -34,17 +34,32 @@ fn connect_disconnect() {
 
     setup(&mut server_app, &mut client_app, port);
 
+    assert!(server_app.world().resource::<RepliconServer>().is_running());
+
+    let quinnet_server = server_app.world().resource::<QuinnetServer>();
+    assert_eq!(quinnet_server.endpoint().clients().len(), 1);
+
+    let connected_clients = server_app.world().resource::<ConnectedClients>();
+    assert_eq!(connected_clients.len(), 1);
+
+    let replicon_client = client_app.world().resource::<RepliconClient>();
+    assert!(replicon_client.is_connected());
+
     let mut quinnet_client = client_app.world_mut().resource_mut::<QuinnetClient>();
     assert!(quinnet_client.is_connected());
+
     let default_connection = quinnet_client.get_default_connection().unwrap();
     quinnet_client.close_connection(default_connection).unwrap();
 
     client_app.update();
 
+    server_wait_for_disconnect(&mut server_app);
+
+    let connected_clients = server_app.world().resource::<ConnectedClients>();
+    assert_eq!(connected_clients.len(), 0);
+
     let replicon_client = client_app.world_mut().resource_mut::<RepliconClient>();
     assert!(replicon_client.is_disconnected());
-
-    server_wait_for_disconnect(&mut server_app);
 
     let quinnet_server = server_app.world().resource::<QuinnetServer>();
     assert_eq!(quinnet_server.endpoint().clients().len(), 0);
@@ -76,7 +91,10 @@ fn replication() {
     server_app.update();
     client_wait_for_message(&mut client_app);
 
-    assert_eq!(client_app.world().entities().len(), 1);
+    client_app
+        .world_mut()
+        .query::<&Replicated>()
+        .single(client_app.world());
 }
 
 #[test]
@@ -93,7 +111,8 @@ fn server_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_server_event::<DummyEvent>(ChannelKind::Ordered);
+        .add_server_event::<DummyEvent>(ChannelKind::Ordered)
+        .finish();
     }
 
     setup(&mut server_app, &mut client_app, port);
@@ -124,12 +143,22 @@ fn client_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_client_event::<DummyEvent>(ChannelKind::Ordered);
+        .add_client_event::<DummyEvent>(ChannelKind::Ordered)
+        .finish();
     }
 
     setup(&mut server_app, &mut client_app, port);
 
+    assert!(server_app.world().resource::<RepliconServer>().is_running());
+
+    let quinnet_server = server_app.world().resource::<QuinnetServer>();
+    assert_eq!(quinnet_server.endpoint().clients().len(), 1);
+
+    let connected_clients = server_app.world().resource::<ConnectedClients>();
+    assert_eq!(connected_clients.len(), 1);
+
     client_app.world_mut().send_event(DummyEvent);
+
     client_app.update();
     server_wait_for_message(&mut server_app);
 
