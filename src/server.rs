@@ -1,8 +1,7 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{
-        EventReader, EventWriter, IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut,
-    },
+    ecs::system::Commands,
+    prelude::{EventReader, IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut},
     time::Time,
 };
 use bevy_quinnet::{
@@ -10,9 +9,9 @@ use bevy_quinnet::{
     shared::QuinnetSyncUpdate,
 };
 use bevy_replicon::{
-    core::ClientId,
+    core::{ClientId, DisconnectReason},
     prelude::{ConnectedClients, RepliconServer},
-    server::{ServerEvent, ServerSet},
+    server::{ClientConnected, ClientDisconnected, ServerSet},
 };
 
 use crate::BYTES_PER_SEC_PERIOD;
@@ -37,7 +36,7 @@ impl Plugin for RepliconQuinnetServerPlugin {
                     )
                         .chain()
                         .in_set(ServerSet::ReceivePackets),
-                    Self::forward_server_events.in_set(ServerSet::SendEvents),
+                    Self::forward_server_events.in_set(ServerSet::TriggerConnectionEvents),
                 ),
             )
             .add_systems(
@@ -90,19 +89,20 @@ impl RepliconQuinnetServerPlugin {
     }
 
     fn forward_server_events(
+        mut commands: Commands,
         mut conn_events: EventReader<bevy_quinnet::server::ConnectionEvent>,
         mut conn_lost_events: EventReader<bevy_quinnet::server::ConnectionLostEvent>,
-        mut server_events: EventWriter<ServerEvent>,
     ) {
         for event in conn_events.read() {
-            server_events.send(ServerEvent::ClientConnected {
+            commands.trigger(ClientConnected {
                 client_id: ClientId::new(event.id),
             });
         }
         for event in conn_lost_events.read() {
-            server_events.send(ServerEvent::ClientDisconnected {
+            commands.trigger(ClientDisconnected {
                 client_id: ClientId::new(event.id),
-                reason: "".to_string(),
+                // ConnectionLostEvent are considered as due to the client
+                reason: DisconnectReason::DisconnectedByClient,
             });
         }
     }
