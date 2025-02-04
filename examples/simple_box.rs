@@ -1,4 +1,4 @@
-//! A simple demo to showcase how player could send inputs to move the square and server replicates position back.
+//! A simple demo to showcase how player could send inputs to move a box and server replicates position back.
 //! Also demonstrates the single-player and how sever also could be a player.
 
 use std::{
@@ -47,172 +47,160 @@ struct SimpleBoxPlugin;
 
 impl Plugin for SimpleBoxPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<PlayerPosition>()
-            .replicate::<PlayerColor>()
-            .add_client_event::<MoveDirection>(ChannelKind::Ordered)
-            .add_systems(
-                Startup,
-                (Self::read_cli.map(Result::unwrap), Self::spawn_camera),
-            )
-            .add_systems(
-                Update,
-                (
-                    Self::apply_movement.run_if(server_or_singleplayer), // Runs only on the server or a single player.
-                    Self::handle_connections.run_if(server_running),     // Runs only on the server.
-                    (Self::draw_boxes, Self::read_input),
-                ),
-            );
+        app.replicate::<BoxPosition>()
+            .replicate::<BoxColor>()
+            .add_client_trigger::<MoveBox>(ChannelKind::Ordered)
+            .add_observer(spawn_clients)
+            .add_observer(despawn_clients)
+            .add_observer(apply_movement)
+            .add_systems(Startup, (read_cli.map(Result::unwrap), spawn_camera))
+            .add_systems(Update, (read_input, draw_boxes));
     }
 }
 
-impl SimpleBoxPlugin {
-    fn read_cli(
-        mut commands: Commands,
-        cli: Res<Cli>,
-        channels: Res<RepliconChannels>,
-        mut server: ResMut<QuinnetServer>,
-        mut client: ResMut<QuinnetClient>,
-    ) -> Result<(), Box<dyn Error>> {
-        match *cli {
-            Cli::SinglePlayer => {
-                commands.spawn(PlayerBundle::new(
-                    ClientId::SERVER,
-                    Vec2::ZERO,
-                    GREEN.into(),
-                ));
-            }
-            Cli::Server { port } => {
-                server
-                    .start_endpoint(
-                        ServerEndpointConfiguration::from_ip(Ipv6Addr::LOCALHOST, port),
-                        CertificateRetrievalMode::GenerateSelfSigned {
-                            server_hostname: Ipv6Addr::LOCALHOST.to_string(),
-                        },
-                        channels.get_server_configs(),
-                    )
-                    .unwrap();
-                commands.spawn((
-                    Text("Server".into()),
-                    TextFont {
-                        font_size: 30.,
-                        ..default()
+fn read_cli(
+    mut commands: Commands,
+    cli: Res<Cli>,
+    channels: Res<RepliconChannels>,
+    mut server: ResMut<QuinnetServer>,
+    mut client: ResMut<QuinnetClient>,
+) -> Result<(), Box<dyn Error>> {
+    match *cli {
+        Cli::SinglePlayer => {
+            info!("starting single-player game");
+            commands.spawn((BoxPlayer(ClientId::SERVER), BoxColor(GREEN.into())));
+        }
+        Cli::Server { port } => {
+            server
+                .start_endpoint(
+                    ServerEndpointConfiguration::from_ip(Ipv6Addr::LOCALHOST, port),
+                    CertificateRetrievalMode::GenerateSelfSigned {
+                        server_hostname: Ipv6Addr::LOCALHOST.to_string(),
                     },
-                    TextColor(Color::WHITE),
-                ));
-                commands.spawn(PlayerBundle::new(
-                    ClientId::SERVER,
-                    Vec2::ZERO,
-                    GREEN.into(),
-                ));
-            }
-            Cli::Client { port, ip } => {
-                client
-                    .open_connection(
-                        ClientEndpointConfiguration::from_ips(ip, port, Ipv6Addr::UNSPECIFIED, 0),
-                        CertificateVerificationMode::SkipVerification,
-                        channels.get_client_configs(),
-                    )
-                    .unwrap();
+                    channels.get_server_configs(),
+                )
+                .unwrap();
 
-                commands.spawn((
-                    Text("Client".into()),
-                    TextFont {
-                        font_size: 30.,
-                        ..default()
-                    },
-                    TextColor(Color::WHITE),
-                ));
-            }
+            commands.spawn((
+                Text::new("Server"),
+                TextFont {
+                    font_size: 30.0,
+                    ..Default::default()
+                },
+                TextColor::WHITE,
+            ));
+            commands.spawn((BoxPlayer(ClientId::SERVER), BoxColor(GREEN.into())));
         }
-
-        Ok(())
-    }
-
-    fn spawn_camera(mut commands: Commands) {
-        commands.spawn(Camera2d::default());
-    }
-
-    /// Logs server events and spawns a new player whenever a client connects.
-    fn handle_connections(mut commands: Commands, mut server_events: EventReader<ServerEvent>) {
-        for event in server_events.read() {
-            match event {
-                ServerEvent::ClientConnected { client_id } => {
-                    info!("{client_id:?} connected");
-                    // Generate pseudo random color from client id.
-                    let r = ((client_id.get() % 23) as f32) / 23.0;
-                    let g = ((client_id.get() % 27) as f32) / 27.0;
-                    let b = ((client_id.get() % 39) as f32) / 39.0;
-                    commands.spawn(PlayerBundle::new(
-                        *client_id,
-                        Vec2::ZERO,
-                        Color::srgb(r, g, b),
-                    ));
-                }
-                ServerEvent::ClientDisconnected { client_id, reason } => {
-                    info!("{client_id:?} disconnected: {reason}");
-                }
-            }
+        Cli::Client { port, ip } => {
+            client
+                .open_connection(
+                    ClientEndpointConfiguration::from_ips(ip, port, Ipv6Addr::UNSPECIFIED, 0),
+                    CertificateVerificationMode::SkipVerification,
+                    channels.get_client_configs(),
+                )
+                .unwrap();
+            commands.spawn((
+                Text("Client".into()),
+                TextFont {
+                    font_size: 30.0,
+                    ..default()
+                },
+                TextColor::WHITE,
+            ));
         }
     }
+    Ok(())
+}
 
-    fn draw_boxes(mut gizmos: Gizmos, players: Query<(&PlayerPosition, &PlayerColor)>) {
-        for (position, color) in &players {
-            gizmos.rect(
-                Isometry3d::new(Vec3::new(position.x, position.y, 0.0), Quat::IDENTITY),
-                Vec2::ONE * 50.0,
-                color.0,
-            );
-        }
+fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
+/// Spawns a new box whenever a client connects.
+fn spawn_clients(trigger: Trigger<ClientConnected>, mut commands: Commands) {
+    // Generate pseudo random color from client id.
+    let r = ((trigger.client_id.get() % 23) as f32) / 23.0;
+    let g = ((trigger.client_id.get() % 27) as f32) / 27.0;
+    let b = ((trigger.client_id.get() % 39) as f32) / 39.0;
+    info!("spawning box for `{:?}`", trigger.client_id);
+    commands.spawn((BoxPlayer(trigger.client_id), BoxColor(Color::srgb(r, g, b))));
+}
+
+/// Despawns a box whenever a client disconnects.
+fn despawn_clients(
+    trigger: Trigger<ClientDisconnected>,
+    mut commands: Commands,
+    boxes: Query<(Entity, &BoxPlayer)>,
+) {
+    let (entity, _) = boxes
+        .iter()
+        .find(|(_, &player)| *player == trigger.client_id)
+        .expect("all clients should have entities");
+    commands.entity(entity).despawn();
+}
+
+/// Reads player inputs and sends [`MoveDirection`] events.
+fn read_input(mut commands: Commands, input: Res<ButtonInput<KeyCode>>) {
+    let mut direction = Vec2::ZERO;
+    if input.pressed(KeyCode::KeyW) {
+        direction.y += 1.0;
     }
-
-    /// Reads player inputs and sends [`MoveDirection`] events.
-    fn read_input(mut move_events: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
-        let mut direction = Vec2::ZERO;
-        if input.pressed(KeyCode::ArrowRight) {
-            direction.x += 1.0;
-        }
-        if input.pressed(KeyCode::ArrowLeft) {
-            direction.x -= 1.0;
-        }
-        if input.pressed(KeyCode::ArrowUp) {
-            direction.y += 1.0;
-        }
-        if input.pressed(KeyCode::ArrowDown) {
-            direction.y -= 1.0;
-        }
-        if direction != Vec2::ZERO {
-            move_events.send(MoveDirection(direction.normalize_or_zero()));
-        }
+    if input.pressed(KeyCode::KeyA) {
+        direction.x -= 1.0;
     }
+    if input.pressed(KeyCode::KeyS) {
+        direction.y -= 1.0;
+    }
+    if input.pressed(KeyCode::KeyD) {
+        direction.x += 1.0;
+    }
+    if direction != Vec2::ZERO {
+        commands.client_trigger(MoveBox(direction.normalize_or_zero()));
+    }
+}
 
-    /// Mutates [`PlayerPosition`] based on [`MoveDirection`] events.
-    ///
-    /// Fast-paced games usually you don't want to wait until server send a position back because of the latency.
-    /// But this example just demonstrates simple replication concept.
-    fn apply_movement(
-        time: Res<Time>,
-        mut move_events: EventReader<FromClient<MoveDirection>>,
-        mut players: Query<(&Player, &mut PlayerPosition)>,
-    ) {
-        const MOVE_SPEED: f32 = 300.0;
-        for FromClient { client_id, event } in move_events.read() {
-            info!("received event {event:?} from {client_id:?}");
-            for (player, mut position) in &mut players {
-                if *client_id == player.0 {
-                    **position += event.0 * time.delta_secs() * MOVE_SPEED;
-                }
-            }
+/// Mutates [`BoxPosition`] based on [`MoveBox`] events.
+///
+/// Fast-paced games usually you don't want to wait until server send a position back because of the latency.
+/// But this example just demonstrates simple replication concept.
+fn apply_movement(
+    trigger: Trigger<FromClient<MoveBox>>,
+    time: Res<Time>,
+    mut boxes: Query<(&BoxPlayer, &mut BoxPosition)>,
+) {
+    const MOVE_SPEED: f32 = 300.0;
+    info!("received movement from `{:?}`", trigger.client_id);
+    for (player, mut position) in &mut boxes {
+        // Find the sender entity. We don't include the entity as a trigger target to save traffic, since the server knows
+        // which entity to apply the input to. We could have a resource that maps connected clients to controlled entities,
+        // but we didn't implement it for the sake of simplicity.
+        if trigger.client_id == **player {
+            **position += *trigger.event * time.delta_secs() * MOVE_SPEED;
         }
     }
 }
 
+fn draw_boxes(mut gizmos: Gizmos, boxes: Query<(&BoxPosition, &BoxColor)>) {
+    for (position, color) in &boxes {
+        gizmos.rect(
+            Vec3::new(position.x, position.y, 0.0),
+            Vec2::ONE * 50.0,
+            **color,
+        );
+    }
+}
+
+/// A simple game with moving boxes.
 #[derive(Parser, PartialEq, Resource)]
 enum Cli {
+    /// No networking will be used, the player will control its box locally.
     SinglePlayer,
+    /// Run game instance will act as both a player and a host.
     Server {
         #[arg(short, long, default_value_t = PORT)]
         port: u16,
     },
+    /// The game instance will connect to a host in order to start the game.
     Client {
         #[arg(short, long, default_value_t = Ipv6Addr::LOCALHOST.into())]
         ip: IpAddr,
@@ -228,35 +216,19 @@ impl Default for Cli {
     }
 }
 
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    position: PlayerPosition,
-    color: PlayerColor,
-    replicated: Replicated,
-}
+/// Identifies which player controls the box.
+///
+/// We want to replicate all boxes, so we just set [`Replicated`] as a required component.
+#[derive(Component, Clone, Copy, Deref, Serialize, Deserialize)]
+#[require(BoxPosition, BoxColor, Replicated)]
+struct BoxPlayer(ClientId);
 
-impl PlayerBundle {
-    fn new(client_id: ClientId, position: Vec2, color: Color) -> Self {
-        Self {
-            player: Player(client_id),
-            position: PlayerPosition(position),
-            color: PlayerColor(color),
-            replicated: Replicated,
-        }
-    }
-}
+#[derive(Component, Deserialize, Serialize, Deref, DerefMut, Default)]
+struct BoxPosition(Vec2);
 
-/// Contains the client ID of a player.
-#[derive(Component, Serialize, Deserialize)]
-struct Player(ClientId);
-
-#[derive(Component, Deserialize, Serialize, Deref, DerefMut)]
-struct PlayerPosition(Vec2);
-
-#[derive(Component, Deserialize, Serialize)]
-struct PlayerColor(Color);
+#[derive(Component, Deref, Deserialize, Serialize, Default)]
+struct BoxColor(Color);
 
 /// A movement event for the controlled box.
-#[derive(Debug, Default, Deserialize, Event, Serialize)]
-struct MoveDirection(Vec2);
+#[derive(Deserialize, Deref, Event, Serialize)]
+struct MoveBox(Vec2);
