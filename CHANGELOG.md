@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.9.0 (2025-02-04)
+
+- Update `bevy_replicon` dependency from 0.29 to 0.30
+
 ## Version 0.8.0 (2025-01-16)
 
 - Update `bevy_quinnet` dependency from 0.13 to 0.14
