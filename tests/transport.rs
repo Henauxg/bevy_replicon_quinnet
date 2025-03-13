@@ -39,8 +39,8 @@ fn connect_disconnect() {
     let quinnet_server = server_app.world().resource::<QuinnetServer>();
     assert_eq!(quinnet_server.endpoint().clients().len(), 1);
 
-    let connected_clients = server_app.world().resource::<ConnectedClients>();
-    assert_eq!(connected_clients.len(), 1);
+    let mut clients = server_app.world_mut().query::<&ConnectedClient>();
+    assert_eq!(clients.iter(server_app.world()).len(), 1);
 
     let replicon_client = client_app.world().resource::<RepliconClient>();
     assert!(replicon_client.is_connected());
@@ -55,17 +55,19 @@ fn connect_disconnect() {
 
     server_wait_for_disconnect(&mut server_app);
 
-    let connected_clients = server_app.world().resource::<ConnectedClients>();
-    assert_eq!(connected_clients.len(), 0);
+    assert_eq!(clients.iter(server_app.world()).len(), 0);
 
     let replicon_client = client_app.world_mut().resource_mut::<RepliconClient>();
     assert!(replicon_client.is_disconnected());
 
-    let quinnet_server = server_app.world().resource::<QuinnetServer>();
+    let mut quinnet_server = server_app.world_mut().resource_mut::<QuinnetServer>();
     assert_eq!(quinnet_server.endpoint().clients().len(), 0);
 
-    let connected_clients = server_app.world().resource::<ConnectedClients>();
-    assert_eq!(connected_clients.len(), 0);
+    quinnet_server.stop_endpoint().unwrap();
+
+    server_app.update();
+
+    assert!(!server_app.world().resource::<RepliconServer>().is_running());
 }
 
 #[test]
@@ -150,12 +152,6 @@ fn client_event() {
     setup(&mut server_app, &mut client_app, port);
 
     assert!(server_app.world().resource::<RepliconServer>().is_running());
-
-    let quinnet_server = server_app.world().resource::<QuinnetServer>();
-    assert_eq!(quinnet_server.endpoint().clients().len(), 1);
-
-    let connected_clients = server_app.world().resource::<ConnectedClients>();
-    assert_eq!(connected_clients.len(), 1);
 
     client_app.world_mut().send_event(DummyEvent);
 

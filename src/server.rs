@@ -1,6 +1,9 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    ecs::system::Commands,
+    ecs::{
+        entity::Entity,
+        system::{Commands, Query},
+    },
     prelude::{EventReader, IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut},
     time::Time,
 };
@@ -9,9 +12,9 @@ use bevy_quinnet::{
     shared::QuinnetSyncUpdate,
 };
 use bevy_replicon::{
-    core::{ClientId, DisconnectReason},
-    prelude::{ConnectedClients, RepliconServer},
-    server::{ClientConnected, ClientDisconnected, ServerSet},
+    core::connected_client::{ClientId, ClientIdMap},
+    prelude::{ConnectedClient, NetworkStats, RepliconServer},
+    server::ServerSet,
 };
 
 use crate::BYTES_PER_SEC_PERIOD;
@@ -27,17 +30,18 @@ impl Plugin for RepliconQuinnetServerPlugin {
             )
             .add_systems(
                 PreUpdate,
-                (
+                ((
+                    Self::set_running.run_if(bevy_quinnet::server::server_just_opened),
+                    Self::set_stopped.run_if(bevy_quinnet::server::server_just_closed),
                     (
-                        Self::set_running.run_if(bevy_quinnet::server::server_just_opened),
-                        Self::set_stopped.run_if(bevy_quinnet::server::server_just_closed),
-                        (Self::receive_packets, Self::update_statistics)
-                            .run_if(bevy_quinnet::server::server_listening),
+                        Self::receive_packets,
+                        Self::update_statistics,
+                        Self::forward_server_events,
                     )
-                        .chain()
-                        .in_set(ServerSet::ReceivePackets),
-                    Self::forward_server_events.in_set(ServerSet::TriggerConnectionEvents),
-                ),
+                        .run_if(bevy_quinnet::server::server_listening),
+                )
+                    .chain()
+                    .in_set(ServerSet::ReceivePackets),),
             )
             .add_systems(
                 PostUpdate,
@@ -57,69 +61,69 @@ impl RepliconQuinnetServerPlugin {
         server.set_running(false);
     }
 
+    fn forward_server_events(
+        mut commands: Commands,
+        mut conn_events: EventReader<bevy_quinnet::server::ConnectionEvent>,
+        mut conn_lost_events: EventReader<bevy_quinnet::server::ConnectionLostEvent>,
+        client_map: Res<ClientIdMap>,
+    ) {
+        for event in conn_events.read() {
+            let client_id = ClientId::new(event.id);
+            const MAX_SIZE: usize = 1200; // TODO Dynamic MTU
+            commands.spawn(ConnectedClient::new(client_id, MAX_SIZE));
+        }
+        for event in conn_lost_events.read() {
+            let client_id = ClientId::new(event.id);
+            let client_entity = *client_map
+                .get(&client_id)
+                .expect("clients should be connected before disconnection");
+            commands.entity(client_entity).despawn();
+        }
+    }
+
     fn update_statistics(
         mut bps_timer: Local<f64>,
-        mut connected_clients: ResMut<ConnectedClients>,
+        mut clients: Query<(&ConnectedClient, &mut NetworkStats)>,
         mut quinnet_server: ResMut<QuinnetServer>,
         time: Res<Time>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for client in connected_clients.iter_mut() {
+        for (client, mut client_stats) in clients.iter_mut() {
             let Some(con) = endpoint.get_connection_mut(client.id().get()) else {
                 return;
             };
             let stats = con.connection_stats();
 
-            client.set_rtt(stats.path.rtt.as_secs_f64());
-            client.set_packet_loss(
-                100. * (stats.path.lost_packets as f64 / stats.path.sent_packets as f64),
-            );
+            client_stats.rtt = stats.path.rtt.as_secs_f64();
+            client_stats.packet_loss =
+                100. * (stats.path.lost_packets as f64 / stats.path.sent_packets as f64);
 
             *bps_timer += time.delta_secs_f64();
             if *bps_timer >= BYTES_PER_SEC_PERIOD {
                 *bps_timer = 0.;
                 let received_bytes_count = con.clear_received_bytes_count() as f64;
                 let sent_bytes_count = con.clear_sent_bytes_count() as f64;
-                client.set_received_bps(received_bytes_count / BYTES_PER_SEC_PERIOD);
-                client.set_sent_bps(sent_bytes_count / BYTES_PER_SEC_PERIOD);
+                client_stats.received_bps = received_bytes_count / BYTES_PER_SEC_PERIOD;
+                client_stats.sent_bps = sent_bytes_count / BYTES_PER_SEC_PERIOD;
             }
         }
     }
 
-    fn forward_server_events(
-        mut commands: Commands,
-        mut conn_events: EventReader<bevy_quinnet::server::ConnectionEvent>,
-        mut conn_lost_events: EventReader<bevy_quinnet::server::ConnectionLostEvent>,
-    ) {
-        for event in conn_events.read() {
-            commands.trigger(ClientConnected {
-                client_id: ClientId::new(event.id),
-            });
-        }
-        for event in conn_lost_events.read() {
-            commands.trigger(ClientDisconnected {
-                client_id: ClientId::new(event.id),
-                // ConnectionLostEvent are considered as due to the client
-                reason: DisconnectReason::DisconnectedByClient,
-            });
-        }
-    }
-
     fn receive_packets(
-        connected_clients: Res<ConnectedClients>,
         mut quinnet_server: ResMut<QuinnetServer>,
         mut replicon_server: ResMut<RepliconServer>,
+        mut clients: Query<(Entity, &ConnectedClient)>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for &client in connected_clients.iter() {
+        for (client_entity, client) in &mut clients {
             while let Some((channel_id, message)) =
                 endpoint.try_receive_payload_from(client.id().get())
             {
-                replicon_server.insert_received(client.id(), channel_id, message);
+                replicon_server.insert_received(client_entity, channel_id, message);
             }
         }
     }
@@ -127,12 +131,16 @@ impl RepliconQuinnetServerPlugin {
     fn send_packets(
         mut quinnet_server: ResMut<QuinnetServer>,
         mut replicon_server: ResMut<RepliconServer>,
+        clients: Query<&ConnectedClient>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for (client_id, channel_id, message) in replicon_server.drain_sent() {
-            endpoint.try_send_payload_on(client_id.get(), channel_id, message);
+        for (client_entity, channel_id, message) in replicon_server.drain_sent() {
+            let client = clients
+                .get(client_entity)
+                .expect("messages should be sent only to connected clients");
+            endpoint.try_send_payload_on(client.id().get(), channel_id, message);
         }
     }
 }

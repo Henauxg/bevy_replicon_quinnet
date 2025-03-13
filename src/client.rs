@@ -9,7 +9,6 @@ use bevy_quinnet::{
 };
 use bevy_replicon::{
     client::ClientSet,
-    core::ClientId,
     prelude::{RepliconClient, RepliconClientStatus},
 };
 
@@ -54,13 +53,8 @@ impl RepliconQuinnetClientPlugin {
         client.set_status(RepliconClientStatus::Connecting);
     }
 
-    fn set_connected(mut client: ResMut<RepliconClient>, quinnet_client: Res<QuinnetClient>) {
-        let client_id = match quinnet_client.connection().client_id() {
-            Some(id) => Some(ClientId::new(id)),
-            None => None,
-        };
-
-        client.set_status(RepliconClientStatus::Connected { client_id });
+    fn set_connected(mut client: ResMut<RepliconClient>) {
+        client.set_status(RepliconClientStatus::Connected);
     }
 
     fn update_statistics(
@@ -75,18 +69,19 @@ impl RepliconQuinnetClientPlugin {
         let Some(stats) = con.connection_stats() else {
             return;
         };
-        replicon_client.set_rtt(stats.path.rtt.as_secs_f64());
-        replicon_client.set_packet_loss(
-            100. * (stats.path.lost_packets as f64 / stats.path.sent_packets as f64),
-        );
+
+        let client_stats = replicon_client.stats_mut();
+        client_stats.rtt = stats.path.rtt.as_secs_f64();
+        client_stats.packet_loss =
+            100. * (stats.path.lost_packets as f64 / stats.path.sent_packets as f64);
 
         *bps_timer += time.delta_secs_f64();
         if *bps_timer >= BYTES_PER_SEC_PERIOD {
             *bps_timer = 0.;
             let received_bytes_count = con.clear_received_bytes_count() as f64;
             let sent_bytes_count = con.clear_sent_bytes_count() as f64;
-            replicon_client.set_received_bps(received_bytes_count / BYTES_PER_SEC_PERIOD);
-            replicon_client.set_sent_bps(sent_bytes_count / BYTES_PER_SEC_PERIOD);
+            client_stats.received_bps = received_bytes_count / BYTES_PER_SEC_PERIOD;
+            client_stats.sent_bps = sent_bytes_count / BYTES_PER_SEC_PERIOD;
         }
     }
 
