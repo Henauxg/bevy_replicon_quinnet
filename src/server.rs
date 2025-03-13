@@ -69,8 +69,11 @@ impl RepliconQuinnetServerPlugin {
     ) {
         for event in conn_events.read() {
             let client_id = ClientId::new(event.id);
-            const MAX_SIZE: usize = 1200; // TODO Dynamic MTU
-            commands.spawn(ConnectedClient::new(client_id, MAX_SIZE));
+            const DEFAULT_INITIAL_MAX_DATAGRAM_SIZE: usize = 1200;
+            commands.spawn(ConnectedClient::new(
+                client_id,
+                DEFAULT_INITIAL_MAX_DATAGRAM_SIZE,
+            ));
         }
         for event in conn_lost_events.read() {
             let client_id = ClientId::new(event.id);
@@ -83,17 +86,22 @@ impl RepliconQuinnetServerPlugin {
 
     fn update_statistics(
         mut bps_timer: Local<f64>,
-        mut clients: Query<(&ConnectedClient, &mut NetworkStats)>,
+        mut clients: Query<(&mut ConnectedClient, &mut NetworkStats)>,
         mut quinnet_server: ResMut<QuinnetServer>,
         time: Res<Time>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for (client, mut client_stats) in clients.iter_mut() {
+        for (mut client, mut client_stats) in clients.iter_mut() {
             let Some(con) = endpoint.get_connection_mut(client.id().get()) else {
                 return;
             };
+
+            if let Some(max_size) = con.max_datagram_size() {
+                client.max_size = max_size;
+            }
+
             let stats = con.connection_stats();
 
             client_stats.rtt = stats.path.rtt.as_secs_f64();
