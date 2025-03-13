@@ -1,9 +1,10 @@
 # Changelog
 
-## Version 0.10.0 (TBD)
+## Version 0.10.0 (2025-03-13)
 
 - Update `bevy_replicon` dependency from 0.30 to 0.31
-
+- Update `bevy_quinnet` dependency from 0.14 to 0.15
+- 
 ## Version 0.9.0 (2025-02-04)
 
 - Update `bevy_replicon` dependency from 0.29 to 0.30
