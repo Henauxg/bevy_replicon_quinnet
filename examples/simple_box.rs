@@ -50,7 +50,7 @@ impl Plugin for SimpleBoxPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<BoxPosition>()
             .replicate::<PlayerBox>()
-            .add_client_trigger::<MoveBox>(ChannelKind::Ordered)
+            .add_client_trigger::<MoveBox>(Channel::Ordered)
             .add_observer(spawn_clients)
             .add_observer(despawn_clients)
             .add_observer(apply_movement)
@@ -83,7 +83,7 @@ fn read_cli(
                     CertificateRetrievalMode::GenerateSelfSigned {
                         server_hostname: Ipv6Addr::LOCALHOST.to_string(),
                     },
-                    channels.get_server_configs(),
+                    channels.server_configs(),
                 )
                 .unwrap();
 
@@ -107,7 +107,7 @@ fn read_cli(
                 .open_connection(
                     ClientEndpointConfiguration::from_ips(ip, port, Ipv6Addr::UNSPECIFIED, 0),
                     CertificateVerificationMode::SkipVerification,
-                    channels.get_client_configs(),
+                    channels.client_configs(),
                 )
                 .unwrap();
             commands.spawn((

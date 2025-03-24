@@ -106,7 +106,7 @@ impl RepliconQuinnetClientPlugin {
             return;
         };
         for (channel_id, message) in replicon_client.drain_sent() {
-            connection.try_send_payload_on(channel_id, message);
+            connection.try_send_payload_on(channel_id as u8, message);
         }
     }
 }

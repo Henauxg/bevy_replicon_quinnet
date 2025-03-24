@@ -12,9 +12,9 @@ use bevy_quinnet::{
     shared::QuinnetSyncUpdate,
 };
 use bevy_replicon::{
-    core::connected_client::{ClientId, ClientIdMap},
     prelude::{ConnectedClient, NetworkStats, RepliconServer},
     server::ServerSet,
+    shared::backend::connected_client::{NetworkId, NetworkIdMap},
 };
 
 use crate::BYTES_PER_SEC_PERIOD;
@@ -65,20 +65,22 @@ impl RepliconQuinnetServerPlugin {
         mut commands: Commands,
         mut conn_events: EventReader<bevy_quinnet::server::ConnectionEvent>,
         mut conn_lost_events: EventReader<bevy_quinnet::server::ConnectionLostEvent>,
-        client_map: Res<ClientIdMap>,
+        network_map: Res<NetworkIdMap>,
     ) {
         for event in conn_events.read() {
-            let client_id = ClientId::new(event.id);
+            let network_id = NetworkId::new(event.id);
             const DEFAULT_INITIAL_MAX_DATAGRAM_SIZE: usize = 1200;
-            commands.spawn(ConnectedClient::new(
-                client_id,
-                DEFAULT_INITIAL_MAX_DATAGRAM_SIZE,
+            commands.spawn((
+                ConnectedClient {
+                    max_size: DEFAULT_INITIAL_MAX_DATAGRAM_SIZE,
+                },
+                network_id,
             ));
         }
         for event in conn_lost_events.read() {
-            let client_id = ClientId::new(event.id);
-            let client_entity = *client_map
-                .get(&client_id)
+            let network_id = NetworkId::new(event.id);
+            let client_entity = *network_map
+                .get(&network_id)
                 .expect("clients should be connected before disconnection");
             commands.entity(client_entity).despawn();
         }
@@ -86,15 +88,15 @@ impl RepliconQuinnetServerPlugin {
 
     fn update_statistics(
         mut bps_timer: Local<f64>,
-        mut clients: Query<(&mut ConnectedClient, &mut NetworkStats)>,
+        mut clients: Query<(&NetworkId, &mut ConnectedClient, &mut NetworkStats)>,
         mut quinnet_server: ResMut<QuinnetServer>,
         time: Res<Time>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for (mut client, mut client_stats) in clients.iter_mut() {
-            let Some(con) = endpoint.get_connection_mut(client.id().get()) else {
+        for (network_id, mut client, mut client_stats) in clients.iter_mut() {
+            let Some(con) = endpoint.get_connection_mut(network_id.get()) else {
                 return;
             };
 
@@ -122,14 +124,14 @@ impl RepliconQuinnetServerPlugin {
     fn receive_packets(
         mut quinnet_server: ResMut<QuinnetServer>,
         mut replicon_server: ResMut<RepliconServer>,
-        mut clients: Query<(Entity, &ConnectedClient)>,
+        mut clients: Query<(Entity, &NetworkId)>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
-        for (client_entity, client) in &mut clients {
+        for (client_entity, network_id) in &mut clients {
             while let Some((channel_id, message)) =
-                endpoint.try_receive_payload_from(client.id().get())
+                endpoint.try_receive_payload_from(network_id.get())
             {
                 replicon_server.insert_received(client_entity, channel_id, message);
             }
@@ -139,16 +141,16 @@ impl RepliconQuinnetServerPlugin {
     fn send_packets(
         mut quinnet_server: ResMut<QuinnetServer>,
         mut replicon_server: ResMut<RepliconServer>,
-        clients: Query<&ConnectedClient>,
+        clients: Query<&NetworkId>,
     ) {
         let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
             return;
         };
         for (client_entity, channel_id, message) in replicon_server.drain_sent() {
-            let client = clients
+            let network_id = clients
                 .get(client_entity)
                 .expect("messages should be sent only to connected clients");
-            endpoint.try_send_payload_on(client.id().get(), channel_id, message);
+            endpoint.try_send_payload_on(network_id.get(), channel_id as u8, message);
         }
     }
 }

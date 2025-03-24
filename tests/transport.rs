@@ -113,7 +113,7 @@ fn server_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_server_event::<DummyEvent>(ChannelKind::Ordered)
+        .add_server_event::<DummyEvent>(Channel::Ordered)
         .finish();
     }
 
@@ -145,7 +145,7 @@ fn client_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_client_event::<DummyEvent>(ChannelKind::Ordered)
+        .add_client_event::<DummyEvent>(Channel::Ordered)
         .finish();
     }
 
@@ -171,10 +171,7 @@ fn setup(server_app: &mut App, client_app: &mut App, server_port: u16) {
 }
 
 fn setup_client(app: &mut App, server_port: u16) {
-    let channels_config = app
-        .world()
-        .resource::<RepliconChannels>()
-        .get_client_configs();
+    let channels_config = app.world().resource::<RepliconChannels>().client_configs();
 
     let mut client = app.world_mut().resource_mut::<QuinnetClient>();
     client
@@ -192,10 +189,7 @@ fn setup_client(app: &mut App, server_port: u16) {
 }
 
 fn setup_server(app: &mut App, server_port: u16) {
-    let channels_config = app
-        .world()
-        .resource::<RepliconChannels>()
-        .get_server_configs();
+    let channels_config = app.world().resource::<RepliconChannels>().server_configs();
 
     let mut server = app.world_mut().resource_mut::<QuinnetServer>();
     server

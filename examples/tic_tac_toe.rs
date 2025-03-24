@@ -52,9 +52,9 @@ impl Plugin for TicTacToePlugin {
             .init_resource::<SymbolFont>()
             .init_resource::<TurnSymbol>()
             .replicate::<Symbol>()
-            .add_client_trigger::<CellPick>(ChannelKind::Ordered)
-            .add_client_trigger::<MapCells>(ChannelKind::Ordered)
-            .add_server_trigger::<MakeLocal>(ChannelKind::Ordered)
+            .add_client_trigger::<CellPick>(Channel::Ordered)
+            .add_client_trigger::<MapCells>(Channel::Ordered)
+            .add_server_trigger::<MakeLocal>(Channel::Ordered)
             .insert_resource(ClearColor(BACKGROUND_COLOR))
             .add_observer(disconnect_by_client)
             .add_observer(init_client)
@@ -123,7 +123,7 @@ fn read_cli(
                     CertificateRetrievalMode::GenerateSelfSigned {
                         server_hostname: Ipv6Addr::LOCALHOST.to_string(),
                     },
-                    channels.get_server_configs(),
+                    channels.server_configs(),
                 )
                 .unwrap();
             commands.spawn((LocalPlayer, symbol));
@@ -133,7 +133,7 @@ fn read_cli(
                 .open_connection(
                     ClientEndpointConfiguration::from_ips(ip, port, Ipv6Addr::UNSPECIFIED, 0),
                     CertificateVerificationMode::SkipVerification,
-                    channels.get_client_configs(),
+                    channels.client_configs(),
                 )
                 .unwrap();
         }
