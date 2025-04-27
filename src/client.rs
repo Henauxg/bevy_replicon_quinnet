@@ -1,6 +1,7 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut},
+    ecs::schedule::IntoScheduleConfigs,
+    prelude::{Local, Res, ResMut},
     time::Time,
 };
 use bevy_quinnet::{

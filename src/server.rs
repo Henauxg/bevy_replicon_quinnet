@@ -2,9 +2,10 @@ use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
     ecs::{
         entity::Entity,
+        schedule::IntoScheduleConfigs,
         system::{Commands, Query},
     },
-    prelude::{EventReader, IntoSystemConfigs, IntoSystemSetConfigs, Local, Res, ResMut},
+    prelude::{EventReader, Local, Res, ResMut},
     time::Time,
 };
 use bevy_quinnet::{
