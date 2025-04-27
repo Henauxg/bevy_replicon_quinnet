@@ -34,12 +34,6 @@ fn main() {
             focused_mode: Continuous,
             unfocused_mode: Continuous,
         })
-        // .add_plugins((
-        //     DefaultPlugins,
-        //     RepliconPlugins,
-        //     RepliconQuinnetPlugins,
-        //     SimpleBoxPlugin,
-        // ))
         .add_plugins((DefaultPlugins, RepliconPlugins, RepliconQuinnetPlugins))
         .replicate::<BoxPosition>()
         .replicate::<PlayerBox>()
