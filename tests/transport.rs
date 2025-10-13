@@ -5,12 +5,16 @@ use std::{
 };
 
 use bevy::prelude::*;
+use bevy::{ecs::schedule::ScheduleLabel, state::app::StatesPlugin};
 use bevy_quinnet::{
     client::{
-        certificate::CertificateVerificationMode, connection::ClientEndpointConfiguration,
-        QuinnetClient,
+        certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
+        ClientConnectionConfiguration, ClientConnectionConfigurationDefaultables, QuinnetClient,
     },
-    server::{certificate::CertificateRetrievalMode, QuinnetServer, ServerEndpointConfiguration},
+    server::{
+        certificate::CertificateRetrievalMode, EndpointAddrConfiguration, QuinnetServer,
+        ServerEndpointConfiguration, ServerEndpointConfigurationDefaultables,
+    },
 };
 use bevy_replicon::prelude::*;
 use bevy_replicon_quinnet::{ChannelsConfigurationExt, RepliconQuinnetPlugins};
@@ -24,8 +28,9 @@ fn connect_disconnect() {
     for app in [&mut server_app, &mut client_app] {
         app.add_plugins((
             MinimalPlugins,
+            StatesPlugin,
             RepliconPlugins.set(ServerPlugin {
-                tick_policy: TickPolicy::EveryFrame,
+                tick_schedule: PostUpdate.intern(),
                 ..Default::default()
             }),
             RepliconQuinnetPlugins,
@@ -35,12 +40,13 @@ fn connect_disconnect() {
 
     setup(&mut server_app, &mut client_app, port);
 
-    assert!(server_app.world().resource::<RepliconServer>().is_running());
+    let server_state = server_app.world().resource::<State<ServerState>>();
+    assert_eq!(*server_state, ServerState::Running);
 
     let quinnet_server = server_app.world().resource::<QuinnetServer>();
     assert_eq!(quinnet_server.endpoint().clients().len(), 1);
 
-    // TODO Better way to wait a bit more for `AuthorizedClient`component insertion. Maybe wait on `ProtocolHash` event ?
+    // // TODO Better way to wait a bit more for `AuthorizedClient`component insertion. Maybe wait on `ProtocolHash` event ?
     sleep(Duration::from_secs_f32(0.05));
     server_app.update();
 
@@ -49,8 +55,8 @@ fn connect_disconnect() {
         .query::<(&ConnectedClient, &AuthorizedClient)>();
     assert_eq!(clients.iter(server_app.world()).len(), 1);
 
-    let replicon_client = client_app.world().resource::<RepliconClient>();
-    assert!(replicon_client.is_connected());
+    let client_state = client_app.world().resource::<State<ClientState>>();
+    assert_eq!(*client_state, ClientState::Connected);
 
     let mut quinnet_client = client_app.world_mut().resource_mut::<QuinnetClient>();
     assert!(quinnet_client.is_connected());
@@ -64,8 +70,8 @@ fn connect_disconnect() {
 
     assert_eq!(clients.iter(server_app.world()).len(), 0);
 
-    let replicon_client = client_app.world_mut().resource_mut::<RepliconClient>();
-    assert!(replicon_client.is_disconnected());
+    let client_state = client_app.world().resource::<State<ClientState>>();
+    assert_eq!(*client_state, ClientState::Disconnected);
 
     let mut quinnet_server = server_app.world_mut().resource_mut::<QuinnetServer>();
     assert_eq!(quinnet_server.endpoint().clients().len(), 0);
@@ -74,7 +80,12 @@ fn connect_disconnect() {
 
     server_app.update();
 
-    assert!(!server_app.world().resource::<RepliconServer>().is_running());
+    let server_state = server_app.world().resource::<State<ServerState>>();
+    assert_eq!(
+        *server_state,
+        ServerState::Stopped,
+        "requires resource removal"
+    );
 }
 
 #[test]
@@ -85,8 +96,9 @@ fn disconnect_request() {
     for app in [&mut server_app, &mut client_app] {
         app.add_plugins((
             MinimalPlugins,
+            StatesPlugin,
             RepliconPlugins.set(ServerPlugin {
-                tick_policy: TickPolicy::EveryFrame,
+                tick_schedule: PostUpdate.intern(),
                 ..Default::default()
             }),
             RepliconQuinnetPlugins,
@@ -100,19 +112,19 @@ fn disconnect_request() {
     // TODO (Pending messages delivery on disconnect) Currently, disconnecting does not deliver pending messages reliably enough to be tested.
     // If we wanted to test this, we'd need not to drop the InternalConnectionRef immediately in Quinnet when disconnecting a client from the server.
 
-    // server_app.world_mut().spawn(Replicated);
-    // server_app.world_mut().send_event(ToClients {
-    //     mode: SendMode::Broadcast,
-    //     event: TestEvent,
-    // });
+    server_app.world_mut().spawn(Replicated);
+    server_app.world_mut().send_event(ToClients {
+        mode: SendMode::Broadcast,
+        event: TestEvent,
+    });
 
     let mut clients = server_app
         .world_mut()
         .query_filtered::<Entity, With<ConnectedClient>>();
-    let client_entity = clients.single(server_app.world()).unwrap();
+    let client = clients.single(server_app.world()).unwrap();
     server_app
         .world_mut()
-        .send_event(DisconnectRequest { client_entity });
+        .send_event(DisconnectRequest { client });
 
     server_app.update();
 
@@ -124,8 +136,8 @@ fn disconnect_request() {
     server_app.update();
     client_app.update();
 
-    let client = client_app.world().resource::<RepliconClient>();
-    assert!(client.is_disconnected());
+    let client_state = client_app.world().resource::<State<ClientState>>();
+    assert_eq!(*client_state, ClientState::Disconnected);
 
     // TODO (Pending messages delivery on disconnect)
     // let events = client_app.world().resource::<Events<TestEvent>>();
@@ -147,8 +159,9 @@ fn replication() {
     for app in [&mut server_app, &mut client_app] {
         app.add_plugins((
             MinimalPlugins,
+            StatesPlugin,
             RepliconPlugins.set(ServerPlugin {
-                tick_policy: TickPolicy::EveryFrame,
+                tick_schedule: PostUpdate.intern(),
                 ..Default::default()
             }),
             RepliconQuinnetPlugins,
@@ -175,8 +188,9 @@ fn server_event() {
     for app in [&mut server_app, &mut client_app] {
         app.add_plugins((
             MinimalPlugins,
+            StatesPlugin,
             RepliconPlugins.set(ServerPlugin {
-                tick_policy: TickPolicy::EveryFrame,
+                tick_schedule: PostUpdate.intern(),
                 ..Default::default()
             }),
             RepliconQuinnetPlugins,
@@ -207,8 +221,9 @@ fn client_event() {
     for app in [&mut server_app, &mut client_app] {
         app.add_plugins((
             MinimalPlugins,
+            StatesPlugin,
             RepliconPlugins.set(ServerPlugin {
-                tick_policy: TickPolicy::EveryFrame,
+                tick_schedule: PostUpdate.intern(),
                 ..Default::default()
             }),
             RepliconQuinnetPlugins,
@@ -217,14 +232,15 @@ fn client_event() {
         .finish();
     }
 
-    setup(&mut server_app, &mut client_app, port);
+    let client_id = setup(&mut server_app, &mut client_app, port);
 
-    assert!(server_app.world().resource::<RepliconServer>().is_running());
+    let server_state = server_app.world().resource::<State<ServerState>>();
+    assert_eq!(*server_state, ServerState::Running);
 
     client_app.world_mut().send_event(TestEvent);
 
     client_app.update();
-    server_wait_for_message(&mut server_app);
+    server_wait_for_message(&mut server_app, client_id);
 
     let client_events = server_app
         .world()
@@ -232,46 +248,56 @@ fn client_event() {
     assert_eq!(client_events.len(), 1);
 }
 
-fn setup(server_app: &mut App, client_app: &mut App, server_port: u16) {
+fn setup(
+    server_app: &mut App,
+    client_app: &mut App,
+    server_port: u16,
+) -> bevy_quinnet::shared::ClientId {
     setup_server(server_app, server_port);
     setup_client(client_app, server_port);
-    wait_for_connection(server_app, client_app);
+    wait_for_connection(server_app, client_app)
 }
 
 fn setup_client(app: &mut App, server_port: u16) {
-    let channels_config = app.world().resource::<RepliconChannels>().client_configs();
+    let send_channels_cfg = app.world().resource::<RepliconChannels>().client_configs();
 
     let mut client = app.world_mut().resource_mut::<QuinnetClient>();
     client
-        .open_connection(
-            ClientEndpointConfiguration::from_ips(
+        .open_connection(ClientConnectionConfiguration {
+            addr_config: ClientAddrConfiguration::from_ips(
                 IpAddr::V6(Ipv6Addr::LOCALHOST),
                 server_port,
                 IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)),
                 0,
             ),
-            CertificateVerificationMode::SkipVerification,
-            channels_config,
-        )
+            cert_mode: CertificateVerificationMode::SkipVerification,
+            defaultables: ClientConnectionConfigurationDefaultables { send_channels_cfg },
+        })
         .unwrap();
 }
 
 fn setup_server(app: &mut App, server_port: u16) {
-    let channels_config = app.world().resource::<RepliconChannels>().server_configs();
+    let send_channels_cfg = app.world().resource::<RepliconChannels>().server_configs();
 
     let mut server = app.world_mut().resource_mut::<QuinnetServer>();
     server
-        .start_endpoint(
-            ServerEndpointConfiguration::from_ip(IpAddr::V6(Ipv6Addr::LOCALHOST), server_port),
-            CertificateRetrievalMode::GenerateSelfSigned {
+        .start_endpoint(ServerEndpointConfiguration {
+            addr_config: EndpointAddrConfiguration::from_ip(
+                IpAddr::V6(Ipv6Addr::LOCALHOST),
+                server_port,
+            ),
+            cert_mode: CertificateRetrievalMode::GenerateSelfSigned {
                 server_hostname: Ipv6Addr::LOCALHOST.to_string(),
             },
-            channels_config,
-        )
+            defaultables: ServerEndpointConfigurationDefaultables { send_channels_cfg },
+        })
         .unwrap();
 }
 
-fn wait_for_connection(server_app: &mut App, client_app: &mut App) {
+fn wait_for_connection(
+    server_app: &mut App,
+    client_app: &mut App,
+) -> bevy_quinnet::shared::ClientId {
     loop {
         client_app.update();
         server_app.update();
@@ -285,6 +311,12 @@ fn wait_for_connection(server_app: &mut App, client_app: &mut App) {
             break;
         }
     }
+    client_app
+        .world()
+        .resource::<QuinnetClient>()
+        .connection()
+        .client_id()
+        .unwrap()
 }
 
 fn client_wait_for_message(client_app: &mut App) {
@@ -295,6 +327,7 @@ fn client_wait_for_message(client_app: &mut App) {
             .world()
             .resource::<QuinnetClient>()
             .connection()
+            .stats()
             .received_messages_count()
             > 0
         {
@@ -303,7 +336,7 @@ fn client_wait_for_message(client_app: &mut App) {
     }
 }
 
-fn server_wait_for_message(server_app: &mut App) {
+fn server_wait_for_message(server_app: &mut App, client_id: bevy_quinnet::shared::ClientId) {
     loop {
         sleep(Duration::from_secs_f32(0.05));
         server_app.update();
@@ -311,7 +344,9 @@ fn server_wait_for_message(server_app: &mut App) {
             .world()
             .resource::<QuinnetServer>()
             .endpoint()
-            .endpoint_stats()
+            .connection(client_id)
+            .unwrap()
+            .stats()
             .received_messages_count()
             > 0
         {

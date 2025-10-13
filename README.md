@@ -15,9 +15,9 @@ An integration of [`bevy_quinnet`](https://github.com/Henauxg/bevy_quinnet) as a
 _Examples were ported from [bevy_replicon_renet's examples](https://github.com/projectharmonia/bevy_replicon/tree/master/bevy_replicon_renet)_
 
 <details>
-  <summary>Simple box</summary>
+  <summary>Deterministic boids</summary>
 
-Start a server with `cargo run --example simple_box server` and a client with `cargo run --example simple_box client`.
+Start a server with `cargo run --example deterministic_boids server` and a client with `cargo run --example deterministic_boids client`.
 
 </details>
 
@@ -34,6 +34,8 @@ Sources for the examples can be found in the [examples](examples) directory.
 
 | bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
 | :--- | :----------- | :-------------------- | :------------ |
+| 0.16 | 0.18         | 0.14                  | 0.35          |
+| 0.16 | 0.17         | 0.13                  | 0.34          |
 | 0.16 | 0.17         | 0.12                  | 0.33          |
 | 0.15 | 0.16         | 0.11                  | 0.32          |
 | 0.15 | 0.15         | 0.10                  | 0.31          |

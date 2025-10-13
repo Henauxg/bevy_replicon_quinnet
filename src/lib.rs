@@ -4,7 +4,7 @@ Provides integration for [`bevy_replicon`](https://docs.rs/bevy_replicon) for [`
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 use bevy_quinnet::shared::channels::{
-    ChannelKind, ChannelsConfiguration, DEFAULT_MAX_RELIABLE_FRAME_LEN,
+    ChannelConfig, SendChannelsConfiguration, DEFAULT_MAX_RELIABLE_FRAME_LEN,
 };
 use bevy_replicon::prelude::*;
 
@@ -42,23 +42,23 @@ impl PluginGroup for RepliconQuinnetPlugins {
 
 pub trait ChannelsConfigurationExt {
     /// Returns server channel configs that can be used to start an endpoint on the [`bevy_quinnet::server::QuinnetServer`].
-    fn server_configs(&self) -> ChannelsConfiguration;
+    fn server_configs(&self) -> SendChannelsConfiguration;
 
-    /// Same as [ChannelsConfigurationExt::server_configs] with custom configuration of `max_reliable_payload_size` used to configure Quinnet's [ChannelKind]
-    fn server_configs_custom(&self, max_reliable_payload_size: usize) -> ChannelsConfiguration;
+    /// Same as [ChannelsConfigurationExt::server_configs] with custom configuration of `max_reliable_payload_size` used to configure Quinnet's [ChannelConfig]
+    fn server_configs_custom(&self, max_reliable_payload_size: usize) -> SendChannelsConfiguration;
 
     /// Same as [`ChannelsConfigurationExt::server_configs`], but for clients.
-    fn client_configs(&self) -> ChannelsConfiguration;
+    fn client_configs(&self) -> SendChannelsConfiguration;
 
-    /// Same as [ChannelsConfigurationExt::client_configs] with custom configuration of `max_reliable_payload_size` used to configure Quinnet's [ChannelKind]
-    fn client_configs_custom(&self, max_reliable_payload_size: usize) -> ChannelsConfiguration;
+    /// Same as [ChannelsConfigurationExt::client_configs] with custom configuration of `max_reliable_payload_size` used to configure Quinnet's [ChannelConfig]
+    fn client_configs_custom(&self, max_reliable_payload_size: usize) -> SendChannelsConfiguration;
 }
 impl ChannelsConfigurationExt for RepliconChannels {
-    fn server_configs(&self) -> ChannelsConfiguration {
+    fn server_configs(&self) -> SendChannelsConfiguration {
         self.server_configs_custom(DEFAULT_MAX_RELIABLE_FRAME_LEN)
     }
 
-    fn server_configs_custom(&self, max_reliable_payload_size: usize) -> ChannelsConfiguration {
+    fn server_configs_custom(&self, max_reliable_payload_size: usize) -> SendChannelsConfiguration {
         let channels = self.server_channels();
         if channels.len() > u8::MAX as usize {
             panic!("number of server channels shouldn't exceed `u8::MAX`");
@@ -66,11 +66,11 @@ impl ChannelsConfigurationExt for RepliconChannels {
         create_configs(channels, max_reliable_payload_size)
     }
 
-    fn client_configs(&self) -> ChannelsConfiguration {
+    fn client_configs(&self) -> SendChannelsConfiguration {
         self.client_configs_custom(DEFAULT_MAX_RELIABLE_FRAME_LEN)
     }
 
-    fn client_configs_custom(&self, max_reliable_payload_size: usize) -> ChannelsConfiguration {
+    fn client_configs_custom(&self, max_reliable_payload_size: usize) -> SendChannelsConfiguration {
         let channels = self.client_channels();
         if channels.len() > u8::MAX as usize {
             panic!("number of server channels shouldn't exceed `u8::MAX`");
@@ -80,13 +80,13 @@ impl ChannelsConfigurationExt for RepliconChannels {
 }
 
 /// Converts replicon channels into quinnet channel configs.
-fn create_configs(channels: &[Channel], max_frame_size: usize) -> ChannelsConfiguration {
-    let mut quinnet_channels = ChannelsConfiguration::new();
+fn create_configs(channels: &[Channel], max_frame_size: usize) -> SendChannelsConfiguration {
+    let mut quinnet_channels = SendChannelsConfiguration::new();
     for channel in channels.iter() {
         quinnet_channels.add(match channel {
-            Channel::Unreliable => ChannelKind::Unreliable,
-            Channel::Unordered => ChannelKind::UnorderedReliable { max_frame_size },
-            Channel::Ordered => ChannelKind::OrderedReliable { max_frame_size },
+            Channel::Unreliable => ChannelConfig::Unreliable,
+            Channel::Unordered => ChannelConfig::UnorderedReliable { max_frame_size },
+            Channel::Ordered => ChannelConfig::OrderedReliable { max_frame_size },
         });
     }
     quinnet_channels

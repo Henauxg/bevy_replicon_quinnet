@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 0.14.0 (2025-10-13)
+
+- Update `bevy_quinnet` dependency from 0.17 to 0.18
+- Update `bevy_replicon` dependency from 0.34 to 0.35
+- Removed simple_box example
+- Added deterministic_boids example
+
+## Version 0.13.0-rc.1 (2025-06-13)
+
+- Update `bevy_replicon` dependency from 0.33 to 0.34.0-rc.1
+
 ## Version 0.12.0 (2025-04-27)
 
 - Update `bevy_replicon` dependency from 0.32 to 0.33
