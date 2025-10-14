@@ -2,13 +2,14 @@ use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
     ecs::{
         entity::Entity,
-        observer::Trigger,
+        lifecycle::Remove,
+        message::MessageReader,
+        observer::On,
         schedule::IntoScheduleConfigs,
         system::{Commands, Query},
-        world::OnRemove,
     },
     log::debug,
-    prelude::{EventReader, Local, Res, ResMut},
+    prelude::{Local, Res, ResMut},
     state::state::NextState,
     time::Time,
 };
@@ -66,8 +67,8 @@ fn set_stopped(mut state: ResMut<NextState<ServerState>>) {
 
 fn process_server_events(
     mut commands: Commands,
-    mut conn_events: EventReader<bevy_quinnet::server::ConnectionEvent>,
-    mut conn_lost_events: EventReader<bevy_quinnet::server::ConnectionLostEvent>,
+    mut conn_events: MessageReader<bevy_quinnet::server::ConnectionEvent>,
+    mut conn_lost_events: MessageReader<bevy_quinnet::server::ConnectionLostEvent>,
     network_map: Res<NetworkIdMap>,
 ) {
     for event in conn_events.read() {
@@ -161,7 +162,7 @@ fn send_packets(
 
 fn disconnect_by_request(
     mut commands: Commands,
-    mut disconnect_events: EventReader<DisconnectRequest>,
+    mut disconnect_events: MessageReader<DisconnectRequest>,
 ) {
     for event in disconnect_events.read() {
         debug!("despawning client `{}` by disconnect request", event.client);
@@ -170,7 +171,7 @@ fn disconnect_by_request(
 }
 
 fn disconnect_client(
-    trigger: Trigger<OnRemove, ConnectedClient>,
+    remove: On<Remove, ConnectedClient>,
     mut quinnet_server: ResMut<QuinnetServer>,
     clients: Query<&NetworkId>,
 ) {
@@ -178,10 +179,8 @@ fn disconnect_client(
         return;
     };
 
-    debug!("disconnecting despawned client `{}`", trigger.target());
+    debug!("disconnecting despawned client `{}`", remove.entity);
 
-    let network_id = clients
-        .get(trigger.target())
-        .expect("inserted on connection");
+    let network_id = clients.get(remove.entity).expect("inserted on connection");
     endpoint.try_disconnect_client(network_id.get());
 }

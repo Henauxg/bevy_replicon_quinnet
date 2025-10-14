@@ -103,7 +103,7 @@ fn disconnect_request() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_server_event::<TestEvent>(Channel::Ordered)
+        .add_server_message::<Test>(Channel::Ordered)
         .finish();
     }
 
@@ -113,9 +113,9 @@ fn disconnect_request() {
     // If we wanted to test this, we'd need not to drop the InternalConnectionRef immediately in Quinnet when disconnecting a client from the server.
 
     server_app.world_mut().spawn(Replicated);
-    server_app.world_mut().send_event(ToClients {
+    server_app.world_mut().write_message(ToClients {
         mode: SendMode::Broadcast,
-        event: TestEvent,
+        message: Test,
     });
 
     let mut clients = server_app
@@ -124,7 +124,7 @@ fn disconnect_request() {
     let client = clients.single(server_app.world()).unwrap();
     server_app
         .world_mut()
-        .send_event(DisconnectRequest { client });
+        .write_message(DisconnectRequest { client });
 
     server_app.update();
 
@@ -195,22 +195,22 @@ fn server_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_server_event::<TestEvent>(Channel::Ordered)
+        .add_server_message::<Test>(Channel::Ordered)
         .finish();
     }
 
     setup(&mut server_app, &mut client_app, port);
 
-    server_app.world_mut().send_event(ToClients {
+    server_app.world_mut().write_message(ToClients {
         mode: SendMode::Broadcast,
-        event: TestEvent,
+        message: Test,
     });
 
     server_app.update();
     client_wait_for_message(&mut client_app);
 
-    let test_events = client_app.world().resource::<Events<TestEvent>>();
-    assert_eq!(test_events.len(), 1);
+    let messages = client_app.world().resource::<Messages<Test>>();
+    assert_eq!(messages.len(), 1);
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn client_event() {
             }),
             RepliconQuinnetPlugins,
         ))
-        .add_client_event::<TestEvent>(Channel::Ordered)
+        .add_client_message::<Test>(Channel::Ordered)
         .finish();
     }
 
@@ -237,15 +237,13 @@ fn client_event() {
     let server_state = server_app.world().resource::<State<ServerState>>();
     assert_eq!(*server_state, ServerState::Running);
 
-    client_app.world_mut().send_event(TestEvent);
+    client_app.world_mut().write_message(Test);
 
     client_app.update();
     server_wait_for_message(&mut server_app, client_id);
 
-    let client_events = server_app
-        .world()
-        .resource::<Events<FromClient<TestEvent>>>();
-    assert_eq!(client_events.len(), 1);
+    let client_messages = server_app.world().resource::<Messages<FromClient<Test>>>();
+    assert_eq!(client_messages.len(), 1);
 }
 
 fn setup(
@@ -372,5 +370,5 @@ fn server_wait_for_disconnect(server_app: &mut App) {
     }
 }
 
-#[derive(Deserialize, Event, Serialize)]
-struct TestEvent;
+#[derive(Deserialize, Message, Serialize)]
+struct Test;
