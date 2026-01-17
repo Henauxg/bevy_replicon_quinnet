@@ -34,10 +34,17 @@ Sources for the examples can be found in the [examples](examples) directory.
 
 | bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
 | :--- | :----------- | :-------------------- | :------------ |
+| 0.17 | 0.19         | 0.16                  | 0.37          |
 | 0.17 | 0.19         | 0.15                  | 0.36          |
 | 0.16 | 0.18         | 0.14                  | 0.35          |
 | 0.16 | 0.17         | 0.13                  | 0.34          |
 | 0.16 | 0.17         | 0.12                  | 0.33          |
+
+<details>
+  <summary>Previous versions</summary>
+
+| bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
+| :--- | :----------- | :-------------------- | :------------ |
 | 0.15 | 0.16         | 0.11                  | 0.32          |
 | 0.15 | 0.15         | 0.10                  | 0.31          |
 | 0.15 | 0.14         | 0.9                   | 0.30          |
@@ -49,6 +56,8 @@ Sources for the examples can be found in the [examples](examples) directory.
 | 0.13 | 0.8          | 0.1                   | 0.24          |
 
 *Before v0.7.0, this repository was inside the `bevy_quinnet` repository*
+
+</details>
 
 ## License
 

@@ -544,7 +544,7 @@ enum GameState {
 struct TurnSymbol(Symbol);
 
 /// The player's symobol, current [`TurnSymbol`] or a symbol of a filled cell (see [`CellPick`]).
-#[derive(Clone, Component, Copy, Default, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
+#[derive(Component, ValueEnum, Default, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 enum Symbol {
     #[default]
     Cross,
