@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.17.0 (2026-01-17)
+
+- Update `bevy_quinnet` dependency from 0.19 to 0.20
+- Update `bevy_replicon` dependency from 0.37 to 0.38
+- Update `bevy` dependency from 0.17 to 0.18
+
 ## Version 0.16.0 (2026-01-17)
 
 - Update `bevy_replicon` dependency from 0.36 to 0.37
