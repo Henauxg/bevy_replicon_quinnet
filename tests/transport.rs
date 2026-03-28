@@ -5,7 +5,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy::{ecs::schedule::ScheduleLabel, state::app::StatesPlugin};
+use bevy::state::app::StatesPlugin;
 use bevy_quinnet::{
     client::{
         certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
@@ -29,10 +29,7 @@ fn connect_disconnect() {
         app.add_plugins((
             MinimalPlugins,
             StatesPlugin,
-            RepliconPlugins.set(ServerPlugin {
-                tick_schedule: PostUpdate.intern(),
-                ..Default::default()
-            }),
+            RepliconPlugins.set(ServerPlugin::new(PostUpdate)),
             RepliconQuinnetPlugins,
         ))
         .finish();
@@ -97,10 +94,7 @@ fn disconnect_request() {
         app.add_plugins((
             MinimalPlugins,
             StatesPlugin,
-            RepliconPlugins.set(ServerPlugin {
-                tick_schedule: PostUpdate.intern(),
-                ..Default::default()
-            }),
+            RepliconPlugins.set(ServerPlugin::new(PostUpdate)),
             RepliconQuinnetPlugins,
         ))
         .add_server_message::<Test>(Channel::Ordered)
@@ -143,9 +137,9 @@ fn disconnect_request() {
     // let events = client_app.world().resource::<Events<TestEvent>>();
     // assert_eq!(events.len(), 1, "last event should be received");
 
-    // let mut replicated = client_app.world_mut().query::<&Replicated>();
+    // let mut remote = client_app.world_mut().query::<&Remote>();
     // assert_eq!(
-    //     replicated.iter(client_app.world()).len(),
+    //     remote.iter(client_app.world()).len(),
     //     1,
     //     "last replication should be received"
     // );
@@ -160,10 +154,7 @@ fn replication() {
         app.add_plugins((
             MinimalPlugins,
             StatesPlugin,
-            RepliconPlugins.set(ServerPlugin {
-                tick_schedule: PostUpdate.intern(),
-                ..Default::default()
-            }),
+            RepliconPlugins.set(ServerPlugin::new(PostUpdate)),
             RepliconQuinnetPlugins,
         ))
         .finish();
@@ -176,8 +167,8 @@ fn replication() {
     server_app.update();
     client_wait_for_message(&mut client_app);
 
-    let mut replicated = client_app.world_mut().query::<&Replicated>();
-    assert_eq!(replicated.iter(client_app.world()).len(), 1);
+    let mut remote = client_app.world_mut().query::<&Remote>();
+    assert_eq!(remote.iter(client_app.world()).len(), 1);
 }
 
 #[test]
@@ -189,10 +180,7 @@ fn server_event() {
         app.add_plugins((
             MinimalPlugins,
             StatesPlugin,
-            RepliconPlugins.set(ServerPlugin {
-                tick_schedule: PostUpdate.intern(),
-                ..Default::default()
-            }),
+            RepliconPlugins.set(ServerPlugin::new(PostUpdate)),
             RepliconQuinnetPlugins,
         ))
         .add_server_message::<Test>(Channel::Ordered)
@@ -222,10 +210,7 @@ fn client_event() {
         app.add_plugins((
             MinimalPlugins,
             StatesPlugin,
-            RepliconPlugins.set(ServerPlugin {
-                tick_schedule: PostUpdate.intern(),
-                ..Default::default()
-            }),
+            RepliconPlugins.set(ServerPlugin::new(PostUpdate)),
             RepliconQuinnetPlugins,
         ))
         .add_client_message::<Test>(Channel::Ordered)
@@ -242,8 +227,8 @@ fn client_event() {
     client_app.update();
     server_wait_for_message(&mut server_app, client_id);
 
-    let client_messages = server_app.world().resource::<Messages<FromClient<Test>>>();
-    assert_eq!(client_messages.len(), 1);
+    let messages = server_app.world().resource::<Messages<FromClient<Test>>>();
+    assert_eq!(messages.len(), 1);
 }
 
 fn setup(
