@@ -18,7 +18,9 @@ use bevy_quinnet::{
     shared::QuinnetSyncPreUpdate,
 };
 use bevy_replicon::{
-    prelude::{ClientStats, ConnectedClient, DisconnectRequest, ServerMessages, ServerState},
+    prelude::{
+        ConnectedClient, ConnectedClientStats, DisconnectRequest, ServerMessages, ServerState,
+    },
     server::ServerSystems,
     shared::backend::connected_client::{NetworkId, NetworkIdMap},
 };
@@ -70,20 +72,19 @@ fn process_server_events(
     mut conn_events: MessageReader<bevy_quinnet::server::ConnectionEvent>,
     mut conn_lost_events: MessageReader<bevy_quinnet::server::ConnectionLostEvent>,
     network_map: Res<NetworkIdMap>,
+    mut quinnet_server: ResMut<QuinnetServer>,
 ) {
     for event in conn_events.read() {
-        let network_id = NetworkId::new(event.id);
         const DEFAULT_INITIAL_MAX_DATAGRAM_SIZE: usize = 1200;
-        commands.spawn((
-            ConnectedClient {
-                max_size: DEFAULT_INITIAL_MAX_DATAGRAM_SIZE,
-            },
-            network_id,
-        ));
+        let max_size = quinnet_server
+            .get_endpoint_mut()
+            .and_then(|endpoint| endpoint.connection(event.id))
+            .and_then(|con| con.max_datagram_size())
+            .unwrap_or(DEFAULT_INITIAL_MAX_DATAGRAM_SIZE);
+        commands.spawn((ConnectedClient { max_size }, NetworkId::new(event.id)));
     }
     for event in conn_lost_events.read() {
-        let network_id = NetworkId::new(event.id);
-        if let Some(&client_entity) = network_map.get(&network_id) {
+        if let Some(&client_entity) = network_map.get(&NetworkId::new(event.id)) {
             // Entity could have been despawned by user.
             commands.entity(client_entity).despawn();
         }
@@ -92,21 +93,17 @@ fn process_server_events(
 
 fn update_statistics(
     mut bps_timer: Local<f64>,
-    mut clients: Query<(&NetworkId, &mut ConnectedClient, &mut ClientStats)>,
+    mut clients: Query<(&NetworkId, &mut ConnectedClientStats)>,
     mut quinnet_server: ResMut<QuinnetServer>,
     time: Res<Time>,
 ) {
     let Some(endpoint) = quinnet_server.get_endpoint_mut() else {
         return;
     };
-    for (network_id, mut client, mut client_stats) in clients.iter_mut() {
+    for (network_id, mut client_stats) in clients.iter_mut() {
         let Some(con) = endpoint.connection_mut(network_id.get()) else {
             return;
         };
-
-        if let Some(max_size) = con.max_datagram_size() {
-            client.max_size = max_size;
-        }
 
         let quinn_stats = con.quinn_connection_stats();
 
@@ -123,6 +120,7 @@ fn update_statistics(
             client_stats.received_bps = received_bytes_count / BYTES_PER_SEC_PERIOD;
             client_stats.sent_bps = sent_bytes_count / BYTES_PER_SEC_PERIOD;
         }
+        // Note: we could update ConnectedClient max_size here if it changed
     }
 }
 

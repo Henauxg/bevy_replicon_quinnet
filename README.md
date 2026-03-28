@@ -34,6 +34,7 @@ Sources for the examples can be found in the [examples](examples) directory.
 
 | bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
 | :--- | :----------- | :-------------------- | :------------ |
+| 0.18 | 0.20         | 0.18                  | 0.39          |
 | 0.18 | 0.20         | 0.17                  | 0.38          |
 | 0.17 | 0.19         | 0.16                  | 0.37          |
 | 0.17 | 0.19         | 0.15                  | 0.36          |
