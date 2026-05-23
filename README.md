@@ -6,13 +6,13 @@
 
 # Bevy Replicon Quinnet
 
-An integration of [`bevy_quinnet`](https://github.com/Henauxg/bevy_quinnet) as a transport for [`bevy_replicon`](https://github.com/projectharmonia/bevy_replicon)
+An integration of [`bevy_quinnet`](https://github.com/Henauxg/bevy_quinnet) as a transport for [`bevy_replicon`](https://github.com/simgine/bevy_replicon)
 
 </div>
 
 ## Examples
 
-_Examples were ported from [bevy_replicon_renet's examples](https://github.com/projectharmonia/bevy_replicon/tree/master/bevy_replicon_renet)_
+_Examples were ported from [bevy_replicon_renet's examples](https://github.com/simgine/bevy_replicon/tree/master/bevy_replicon_renet)_
 
 <details>
   <summary>Deterministic boids</summary>
@@ -34,6 +34,7 @@ Sources for the examples can be found in the [examples](examples) directory.
 
 | bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
 | :--- | :----------- | :-------------------- | :------------ |
+| 0.18 | 0.20         | 0.19                  | 0.40          |
 | 0.18 | 0.20         | 0.18                  | 0.39          |
 | 0.18 | 0.20         | 0.17                  | 0.38          |
 | 0.17 | 0.19         | 0.16                  | 0.37          |

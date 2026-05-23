@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.19.0 (2026-05-23)
+
+- Update `bevy_replicon` dependency from 0.39 to 0.40
+
 ## Version 0.18.0 (2026-03-26)
 
 - Update `bevy_replicon` dependency from 0.38 to 0.39
