@@ -14,21 +14,25 @@ An integration of [`bevy_quinnet`](https://github.com/Henauxg/bevy_quinnet) as a
 
 _Examples were ported from [bevy_replicon_renet's examples](https://github.com/simgine/bevy_replicon/tree/master/bevy_replicon_renet)_
 
-<details>
-  <summary>Deterministic boids</summary>
+Sources in the [examples](examples) directory. See [Local dev tasks](#local-dev-tasks) for `just` shortcuts.
 
-Start a server with `cargo run --example deterministic_boids server` and a client with `cargo run --example deterministic_boids client`.
+- **deterministic_boids**: `cargo run --example deterministic_boids -- server` / `client`
+- **tic_tac_toe**: `cargo run --example tic_tac_toe -- server` / `client`
 
-</details>
+## Local dev tasks
 
-<details>
-  <summary>Tic tac toe</summary>
+With [just](https://github.com/casey/just) installed (`cargo install just`):
 
-Start a server with `cargo run --example tic_tac_toe server` and a client with `cargo run --example tic_tac_toe client`.
+```
+just check          # fmt, clippy, check, test, doc, machete
+just format         # cargo fmt --all
+just tic-tac-toe    # server + client in separate windows
+just boids          # server + client in separate windows
+```
 
-</details>
+`cargo machete` is required for `just check` (`cargo install cargo-machete`).
 
-Sources for the examples can be found in the [examples](examples) directory.
+`Cargo.lock` is committed. After changing dependencies, run `cargo check` and commit the updated lockfile. `just check` runs with `--locked` and will fail otherwise.
 
 ## Compatible versions
 

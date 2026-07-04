@@ -6,6 +6,7 @@
 - Update `bevy_quinnet` dependency from 0.20 to 0.21
 - Update `bevy_replicon` dependency from 0.40 to 0.41
 - Sync examples with `bevy_replicon` 0.41
+- Add justfile for local check/format and example launchers
 
 ## Version 0.19.0 (2026-05-23)
 
