@@ -38,6 +38,7 @@ just boids          # server + client in separate windows
 
 | bevy | bevy_quinnet | bevy_replicon_quinnet | bevy_replicon |
 | :--- | :----------- | :-------------------- | :------------ |
+| 0.20 | 0.22         | 0.21                  | 0.45          |
 | 0.19 | 0.21         | 0.20                  | 0.41          |
 | 0.18 | 0.20         | 0.19                  | 0.40          |
 | 0.18 | 0.20         | 0.18                  | 0.39          |

@@ -169,7 +169,7 @@ fn disconnect_by_request(
 }
 
 fn disconnect_client(
-    remove: On<Remove, ConnectedClient>,
+    remove: On<Remove<ConnectedClient>>,
     mut quinnet_server: ResMut<QuinnetServer>,
     clients: Query<&NetworkId>,
 ) {
