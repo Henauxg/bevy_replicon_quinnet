@@ -13,7 +13,7 @@ exclude = ["assets/"]
 
 [dependencies]
 bevy_replicon = { version = "0.45", default-features = false }
-bevy_quinnet = { version = "0.22", default-features = false }
+bevy_quinnet = { version = "0.23", default-features = false }
 bevy = { version = "0.20", default-features = false, features = ["bevy_log"] }
 
 [features]
