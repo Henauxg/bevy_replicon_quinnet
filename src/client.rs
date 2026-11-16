@@ -20,7 +20,12 @@ pub struct RepliconQuinnetClientPlugin;
 
 impl Plugin for RepliconQuinnetClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(QuinnetClientPlugin::default())
+        let quinnet_plugin = QuinnetClientPlugin {
+            // `receive_packets` reads the queue that the `recv_channels` systems would empty first.
+            disable_recv_channels: true,
+            ..Default::default()
+        };
+        app.add_plugins(quinnet_plugin)
             .configure_sets(
                 PreUpdate,
                 ClientSystems::ReceivePackets.after(QuinnetSyncPreUpdate),

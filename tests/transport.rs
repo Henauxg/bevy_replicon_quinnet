@@ -1,24 +1,30 @@
 use std::{
     net::{IpAddr, Ipv6Addr},
     thread::sleep,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
-use bevy_quinnet::{
-    client::{
-        certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
-        ClientConnectionConfiguration, ClientConnectionConfigurationDefaultables, QuinnetClient,
-    },
-    server::{
-        certificate::CertificateRetrievalMode, EndpointAddrConfiguration, QuinnetServer,
-        ServerEndpointConfiguration, ServerEndpointConfigurationDefaultables,
-    },
-};
 use bevy_replicon::prelude::*;
-use bevy_replicon_quinnet::{ChannelsConfigurationExt, RepliconQuinnetPlugins};
+use bevy_replicon_quinnet::{
+    bevy_quinnet::{
+        self,
+        client::{
+            certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
+            ClientConnectionConfiguration, ClientConnectionConfigurationDefaultables,
+            QuinnetClient,
+        },
+        server::{
+            certificate::CertificateRetrievalMode, EndpointAddrConfiguration, QuinnetServer,
+            ServerEndpointConfiguration, ServerEndpointConfigurationDefaultables,
+        },
+    },
+    ChannelsConfigurationExt, RepliconQuinnetPlugins,
+};
 use serde::{Deserialize, Serialize};
+
+const WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[test]
 fn connect_disconnect() {
@@ -254,7 +260,10 @@ fn setup_client(app: &mut App, server_port: u16) {
                 0,
             ),
             cert_mode: CertificateVerificationMode::SkipVerification,
-            defaultables: ClientConnectionConfigurationDefaultables { send_channels_cfg },
+            defaultables: ClientConnectionConfigurationDefaultables {
+                send_channels_cfg,
+                ..Default::default()
+            },
         })
         .unwrap();
 }
@@ -272,7 +281,10 @@ fn setup_server(app: &mut App, server_port: u16) {
             cert_mode: CertificateRetrievalMode::GenerateSelfSigned {
                 server_hostname: Ipv6Addr::LOCALHOST.to_string(),
             },
-            defaultables: ServerEndpointConfigurationDefaultables { send_channels_cfg },
+            defaultables: ServerEndpointConfigurationDefaultables {
+                send_channels_cfg,
+                ..Default::default()
+            },
         })
         .unwrap();
 }
@@ -281,7 +293,12 @@ fn wait_for_connection(
     server_app: &mut App,
     client_app: &mut App,
 ) -> bevy_quinnet::shared::ClientId {
+    let start = Instant::now();
     loop {
+        assert!(
+            start.elapsed() < WAIT_TIMEOUT,
+            "timed out waiting for the connection"
+        );
         client_app.update();
         server_app.update();
         if client_app
@@ -303,7 +320,12 @@ fn wait_for_connection(
 }
 
 fn client_wait_for_message(client_app: &mut App) {
+    let start = Instant::now();
     loop {
+        assert!(
+            start.elapsed() < WAIT_TIMEOUT,
+            "timed out waiting for a message on the client"
+        );
         sleep(Duration::from_secs_f32(0.05));
         client_app.update();
         if client_app
@@ -320,7 +342,12 @@ fn client_wait_for_message(client_app: &mut App) {
 }
 
 fn server_wait_for_message(server_app: &mut App, client_id: bevy_quinnet::shared::ClientId) {
+    let start = Instant::now();
     loop {
+        assert!(
+            start.elapsed() < WAIT_TIMEOUT,
+            "timed out waiting for a message on the server"
+        );
         sleep(Duration::from_secs_f32(0.05));
         server_app.update();
         if server_app
@@ -339,7 +366,12 @@ fn server_wait_for_message(server_app: &mut App, client_id: bevy_quinnet::shared
 }
 
 fn server_wait_for_disconnect(server_app: &mut App) {
+    let start = Instant::now();
     loop {
+        assert!(
+            start.elapsed() < WAIT_TIMEOUT,
+            "timed out waiting for a disconnection"
+        );
         sleep(Duration::from_secs_f32(0.05));
         server_app.update();
         if server_app
