@@ -17,19 +17,22 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_quinnet::{
-    client::{
-        certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
-        ClientConnectionConfiguration, ClientConnectionConfigurationDefaultables, QuinnetClient,
-    },
-    server::{
-        certificate::CertificateRetrievalMode, EndpointAddrConfiguration, QuinnetServer,
-        ServerEndpointConfiguration, ServerEndpointConfigurationDefaultables,
-    },
-};
 use bevy_replicon::prelude::*;
 
-use bevy_replicon_quinnet::{ChannelsConfigurationExt, RepliconQuinnetPlugins};
+use bevy_replicon_quinnet::{
+    bevy_quinnet::{
+        client::{
+            certificate::CertificateVerificationMode, connection::ClientAddrConfiguration,
+            ClientConnectionConfiguration, ClientConnectionConfigurationDefaultables,
+            QuinnetClient,
+        },
+        server::{
+            certificate::CertificateRetrievalMode, EndpointAddrConfiguration, QuinnetServer,
+            ServerEndpointConfiguration, ServerEndpointConfigurationDefaultables,
+        },
+    },
+    ChannelsConfigurationExt, RepliconQuinnetPlugins,
+};
 use clap::Parser;
 use fastrand::Rng;
 use fastrand_contrib::RngExt;
@@ -84,6 +87,7 @@ fn setup(
                     },
                     defaultables: ServerEndpointConfigurationDefaultables {
                         send_channels_cfg: channels.server_configs(),
+                        ..Default::default()
                     },
                 })
                 .unwrap();
@@ -113,6 +117,7 @@ fn setup(
                     cert_mode: CertificateVerificationMode::SkipVerification,
                     defaultables: ClientConnectionConfigurationDefaultables {
                         send_channels_cfg: channels.client_configs(),
+                        ..Default::default()
                     },
                 })
                 .unwrap();

@@ -2,6 +2,9 @@
 Provides integration for [`bevy_replicon`](https://docs.rs/bevy_replicon) for [`bevy_quinnet`](https://docs.rs/bevy_quinnet).
 */
 
+/// Re-exported so you can configure connections and endpoints without depending on `bevy_quinnet` directly.
+pub use bevy_quinnet;
+
 use bevy::{app::PluginGroupBuilder, prelude::*};
 use bevy_quinnet::shared::channels::{
     ChannelConfig, SendChannelsConfiguration, DEFAULT_MAX_RELIABLE_FRAME_LEN,

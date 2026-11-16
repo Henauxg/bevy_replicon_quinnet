@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Update `bevy_quinnet` dependency from 0.22 to 0.23
+- Fix: no messages were received when `bevy_quinnet`'s `recv_channels` feature was enabled, for example by a direct dependency on `bevy_quinnet` with default features. The plugins now set `disable_recv_channels` on the `bevy_quinnet` plugins ([#7](https://github.com/Henauxg/bevy_replicon_quinnet/issues/7))
+- Re-export `bevy_quinnet`, so the connection and endpoint configuration types no longer need a direct dependency
+- Tests: the wait loops in the transport tests now fail after 5 seconds instead of hanging
+
 ## Version 0.21.0 (2026-10-13)
 
 - Update `bevy` dependency from 0.19 to 0.20

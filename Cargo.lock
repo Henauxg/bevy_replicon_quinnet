@@ -1226,9 +1226,9 @@ checksum = "41935a00c02004753bd7ed5094754397800b3f673bf15553bb007b06216872d5"
 
 [[package]]
 name = "bevy_quinnet"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80023f7a2942fb1216acc525feddd11b112e1c91d93811e082ef990d5e31f81f"
+checksum = "7dd3f654b8e8f123c275ecf83e0d4e33cbfd41e32d1b9095d88ee10093517c9c"
 dependencies = [
  "base64 0.22.1",
  "bevy",
