@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Version 0.22.0 (2026-11-17)
 
 - Update `bevy_quinnet` dependency from 0.22 to 0.23
 - Fix: no messages were received when `bevy_quinnet`'s `recv_channels` feature was enabled, for example by a direct dependency on `bevy_quinnet` with default features. The plugins now set `disable_recv_channels` on the `bevy_quinnet` plugins ([#7](https://github.com/Henauxg/bevy_replicon_quinnet/issues/7))

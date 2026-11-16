@@ -1383,7 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon_quinnet"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "bevy",
  "bevy_quinnet",
